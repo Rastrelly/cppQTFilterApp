@@ -32,6 +32,7 @@ cppQTFilterApp::cppQTFilterApp(QWidget *parent)
 	chart = new QChart();
 	axisX = new QValueAxis();
 	axisY = new QValueAxis();
+	
 	axisPercY = new QValueAxis();
 	axisPercY->setRange(-100.0f, 100.0f);
 
@@ -160,6 +161,8 @@ void cppQTFilterApp::btnSetupGeneratorClick()
 	seriesAvgErr->clear();
 	seriesAvgNz->clear();
 
+	axisY->setRange(-0.5*noiseAmpl-ampl, ampl + 0.5*noiseAmpl);
+
 	//run timer
 	timer->start(0);
 }
@@ -179,17 +182,7 @@ void cppQTFilterApp::tmrTimerTime()
 		float xmin = 0, xmax = 0, ymin = 0, ymax = 0;
 		signalGen->getGenerator()->getDataExtremes(xmin, xmax, ymin, ymax);
 		
-		//update axii ranges
-		float NoiseAmpl = NG->getNoiseAmpl();
-		float yBot = ymin - .50f*NoiseAmpl;
-		float yTop = ymax + .50f*NoiseAmpl;
-			
-		if (yBot == INFINITE) yBot = -100; 
-		if (yTop == INFINITE) yTop = 100;
-
-		axisX->setRange(xmin, xmax);
-		axisY->setRange(yBot, yTop);
-		
+		axisX->setRange(xmin, xmax);		
 
 		//update chart contents
 		//original signal

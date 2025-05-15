@@ -100,6 +100,19 @@ public:
 		aDX += px; aDX /= 2.0f;
 	}
 
+	//simply doubles the last recorded point
+	void tweenPoint()
+	{
+		float px = 0;
+		float py = 0;
+		if (x.size() > 0 && y.size() > 0)
+		{
+			px = x[x.size() - 1];
+			py = y[y.size() - 1];
+		}
+		appendPoint(px, py);
+	}
+
 	void runFilter(float &fx, float &fy)
 	{
 		float yErr = findYErrApprox(y);

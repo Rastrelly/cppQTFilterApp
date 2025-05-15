@@ -66,5 +66,11 @@
     <ClInclude Include="TErrorCalc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TSerialHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TSerialMessenger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

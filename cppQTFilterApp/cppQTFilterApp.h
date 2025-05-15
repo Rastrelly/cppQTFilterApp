@@ -7,6 +7,8 @@
 #include <ourTimer.h>
 #include "TKalmanFilter.h"
 #include "TErrorCalc.h"
+#include "TSerialHandler.h"
+#include "TSerialMessenger.h"
 
 class cppQTFilterApp : public QDialog
 {
@@ -27,8 +29,12 @@ public:
 	TKalmanFilter * kalmFilt;
 	TErrorCalc * errCalc;
 	TErrorCalc * errCalcNoise;
+	TSerialHandler * serialHandler;
+	TSerialMessenger * serialMessenger;
 
 	bool iterDone;
+	bool useCOM;
+	int comPortNo;
 
 
 private:

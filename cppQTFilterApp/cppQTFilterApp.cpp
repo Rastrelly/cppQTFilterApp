@@ -4,8 +4,6 @@
 cppQTFilterApp::cppQTFilterApp(QWidget *parent)
     : QDialog(parent)
 {
-	iterDone = true;
-	
 	//default ui setup
 	ui.setupUi(this);
 	firstLaunch = true;
@@ -100,6 +98,8 @@ void cppQTFilterApp::btnSetupGeneratorClick()
 {
 	timer->stop();
 
+	useCOM = ui.rbUsePort->isChecked();
+
 	if (!firstLaunch)
 	if (signalGen)
 	{
@@ -108,6 +108,8 @@ void cppQTFilterApp::btnSetupGeneratorClick()
 		delete[] kalmFilt;
 		delete[] errCalc;
 		delete[] errCalcNoise;
+		delete[] serialHandler;
+		delete[] serialMessenger;
 	}
 
 	int sgt = ui.cbSigGenType->currentIndex();
@@ -161,10 +163,33 @@ void cppQTFilterApp::btnSetupGeneratorClick()
 	seriesAvgErr->clear();
 	seriesAvgNz->clear();
 
-	axisY->setRange(-0.5*noiseAmpl-ampl, ampl + 0.5*noiseAmpl);
+	if (useCOM)
+		axisY->setRange(0.0f, 7000.0f);
+	else
+		axisY->setRange(-0.5*noiseAmpl-ampl, ampl + 0.5*noiseAmpl);
+
+	//setup for COM usage
+	QString comPortNoStr = ui.lePortNo->text();
+	comPortNo = comPortNoStr.toInt();
+
+	//initiate COM port tools if needed
+	bool pSuccess = false;
+	if (useCOM)
+	{
+		serialHandler = new TSerialHandler(comPortNo, 9600, pSuccess);
+		serialMessenger = new TSerialMessenger();
+	}
 
 	//run timer
 	timer->start(0);
+}
+
+//check if data from port is a number
+bool charIsNumber(char c)
+{
+	if (c == '0' || c == '1' || c == '2' || c == '3' || c == '4' || c == '5'
+		|| c == '6' || c == '7' || c == '8' || c == '9') return true;
+	else return false;
 }
 
 //event for QT timer to force generator and filter to move
@@ -172,6 +197,8 @@ void cppQTFilterApp::tmrTimerTime()
 {
 	//get dt
 	float dt = extTimer->getdeltatime();
+	int maxDataL = 0;
+	int dataL = 0;
 
 	//work only if signal generator actually exists
 	if (signalGen != NULL)
@@ -184,47 +211,153 @@ void cppQTFilterApp::tmrTimerTime()
 		
 		axisX->setRange(xmin, xmax);		
 
-		//update chart contents
 		//original signal
-		int dataL = signalGen->getGenerator()->getDataSize();
-		int maxDataL = signalGen->getGenerator()->getBufferVolume();
+		dataL = signalGen->getGenerator()->getDataSize();
+		maxDataL = signalGen->getGenerator()->getBufferVolume();
 		float lastPointX = 0;
 		float lastPointY = 0;
 		signalGen->getGenerator()->getDataPoint(dataL - 1, lastPointX, lastPointY);
-		seriesSrc->append(QPointF(lastPointX, lastPointY));
-		//noise data
-		NG->appendPoint(lastPointX, lastPointY);
-		float lastNPointX = 0;
-		float lastNPointY = 0;
-		if (ui.chMakeNoise->checkState())
-			NG->getLastPoint(lastNPointX, lastNPointY);
+
+		//do this for GENERATED signal
+		if (!useCOM)
+		{
+			//update chart contents
+			seriesSrc->append(QPointF(lastPointX, lastPointY));
+			//noise data
+			NG->appendPoint(lastPointX, lastPointY);
+			float lastNPointX = 0;
+			float lastNPointY = 0;
+			if (ui.chMakeNoise->checkState())
+				NG->getLastPoint(lastNPointX, lastNPointY);
+			else
+			{
+				lastNPointX = lastPointX;
+				lastNPointY = lastPointY;
+			}
+			seriesNoised->append(QPointF(lastNPointX, lastNPointY));
+
+			//filter point
+			float lastPointFX = 0, lastPointFY = 0;
+			kalmFilt->appendPoint(lastNPointX, lastNPointY);
+			kalmFilt->runFilter(lastPointFX, lastPointFY);
+			seriesFiltered->append(QPointF(lastPointFX, lastPointFY));
+
+			//calc errors
+			errCalc->calcErrors(lastPointFY, lastPointY);
+			errCalcNoise->calcErrors(lastNPointY, lastPointY);
+
+			//output errors
+			ui.leAbsErrLast->setText(QString::number(errCalc->getLastAbsErr()));
+			ui.leRelErrLast->setText(QString::number(errCalc->getLastRelErr() * 100));
+			ui.leAbsErrAvg->setText(QString::number(errCalc->getAvgAbsErr()));
+			ui.leRelErrAvg->setText(QString::number(errCalc->getAvgRelErr() * 100));
+			ui.leAvgSqDev->setText(QString::number(errCalc->getSqDev()));
+
+			seriesAvgErr->append(QPointF(lastPointX, errCalc->getAvgAbsErr() / errCalcNoise->getAvgAbsErr()));
+			//seriesAvgNz->append(QPointF(lastPointX, errCalcNoise->getLastAbsErr()));
+		}
+		//do this to signal received from the port
 		else
 		{
-			lastNPointX = lastPointX;
-			lastNPointY = lastPointY;
+
+			//handle message receiving
+			std::string sRecvMessage = "";
+			sRecvMessage = serialHandler->readFromPort();
+			serialMessenger->bufferMessage(sRecvMessage);
+
+			std::string messageRecv = "";
+			messageRecv = serialMessenger->getMessageOut();
+
+			int val1 = 0;
+			int val2 = 0;
+
+			if (messageRecv != "")
+			{				
+				std::string val1str = "";
+				std::string val2str = "";
+				bool hasStart1 = false;
+				bool hasStart2 = false;
+				bool hasFinish1 = false;
+				bool hasFinish2 = false;
+				int readMode = 0;
+				int ml = messageRecv.length();
+				if (ml > 0)
+					for (int i = 0; i < ml; i++)
+					{
+						char cs = messageRecv[i];
+						if (cs == 'E')
+						{
+							readMode = 0;
+							hasFinish2 = true;
+						}
+						else if (cs == 'W')
+						{
+							readMode = 0;
+							hasFinish1 = true;
+						}
+						else if (cs == 'S')
+						{
+							readMode = 1;
+							hasStart1 = true;
+						}
+						else if (cs == 'D')
+						{
+							readMode = 2;
+							hasStart2 = true;
+						}
+						else
+						{
+							if (readMode == 1)
+							{
+								if (charIsNumber(cs)) val1str += cs;
+							}
+							if (readMode == 2)
+							{
+								if (charIsNumber(cs)) val2str += cs;
+							}
+						}
+					}
+
+				serialMessenger->writeToLog("val1str=" + val1str + "; val2str=" + val2str);
+
+				serialMessenger->getValues(val1, val2);
+
+				if (hasFinish1 && hasStart1)
+				{
+					if (val1str != "")
+						val1 = atoi(val1str.c_str());
+				}
+
+				if (hasFinish2 && hasStart2)
+				{
+					if (val2str != "")
+						val2 = atoi(val2str.c_str());
+				}
+
+				serialMessenger->setValues(val1, val2);
+			}
+
+			lastPointY = val1;
+
+			//filter point
+			float lastPointFX = 0, lastPointFY = 0;
+			if (val1 != 0)
+			{
+				//do if point exists
+				kalmFilt->appendPoint(lastPointX, lastPointY);				
+			}
+			else
+			{
+				//do if point is empty
+				kalmFilt->tweenPoint();
+			}
+			kalmFilt->runFilter(lastPointFX, lastPointFY);
+			
+			//update chart contents
+			seriesSrc->append(QPointF(lastPointX, lastPointY));
+			seriesFiltered->append(QPointF(lastPointFX, lastPointFY));
+
 		}
-		seriesNoised->append(QPointF(lastNPointX, lastNPointY));
-
-		//filter point
-		float lastPointFX = 0, lastPointFY = 0;
-		kalmFilt->appendPoint(lastNPointX, lastNPointY);
-		kalmFilt->runFilter(lastPointFX, lastPointFY);
-		seriesFiltered->append(QPointF(lastPointFX, lastPointFY));
-
-		//calc errors
-		errCalc->calcErrors(lastPointFY, lastPointY);
-		errCalcNoise->calcErrors(lastNPointY, lastPointY);
-
-		//output errors
-		ui.leAbsErrLast->setText(QString::number(errCalc->getLastAbsErr()));
-		ui.leRelErrLast->setText(QString::number(errCalc->getLastRelErr() * 100));
-		ui.leAbsErrAvg->setText(QString::number(errCalc->getAvgAbsErr()));
-		ui.leRelErrAvg->setText(QString::number(errCalc->getAvgRelErr() * 100));
-		ui.leAvgSqDev->setText(QString::number(errCalc->getSqDev()));
-		
-		seriesAvgErr->append(QPointF(lastPointX, errCalc->getAvgAbsErr() / errCalcNoise->getAvgAbsErr()));
-		//seriesAvgNz->append(QPointF(lastPointX, errCalcNoise->getLastAbsErr()));
-
 		//clean up charts
 		int sL = seriesSrc->points().size();
 		if (sL > maxDataL)

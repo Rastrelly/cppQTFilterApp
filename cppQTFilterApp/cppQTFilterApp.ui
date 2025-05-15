@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1042</width>
-    <height>693</height>
+    <height>728</height>
    </rect>
   </property>
   <property name="focusPolicy">
@@ -73,6 +73,16 @@
          <layout class="QGridLayout" name="gridLayout_2">
           <item row="0" column="0">
            <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="QRadioButton" name="rbUseGen">
+              <property name="text">
+               <string>Use Generator</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
             <item>
              <widget class="QLabel" name="label">
               <property name="text">
@@ -168,14 +178,7 @@
             <item>
              <widget class="QCheckBox" name="chFixedStep">
               <property name="text">
-               <string>Fixed Generator Step</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_4">
-              <property name="text">
-               <string>Step Value</string>
+               <string>Fixed Generator Step with Value:</string>
               </property>
              </widget>
             </item>
@@ -183,6 +186,20 @@
              <widget class="QLineEdit" name="leGenStepVal">
               <property name="text">
                <string>0.001</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="rbUsePort">
+              <property name="text">
+               <string>Use COM Port</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLineEdit" name="lePortNo">
+              <property name="text">
+               <string>7</string>
               </property>
              </widget>
             </item>

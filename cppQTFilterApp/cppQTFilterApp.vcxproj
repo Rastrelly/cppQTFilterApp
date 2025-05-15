@@ -58,6 +58,7 @@
     <IncludePath>C:\CPPLIBS\ourTimer;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'">
+    <IncludePath>C:\CPPLIBS\ceSerial;C:\CPPLIBS\ourTimer;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|Win32'" Label="Configuration">
     <ClCompile>
@@ -98,6 +99,8 @@
     <ClInclude Include="TErrorCalc.h" />
     <ClInclude Include="TKalmanFilter.h" />
     <ClInclude Include="TNoiseGen.h" />
+    <ClInclude Include="TSerialHandler.h" />
+    <ClInclude Include="TSerialMessenger.h" />
     <ClInclude Include="TSignalGenerator.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

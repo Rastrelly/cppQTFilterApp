@@ -115,10 +115,18 @@ public:
 
 	void runFilter(float &fx, float &fy)
 	{
-		float yErr = findYErrApprox(y);
-		float xFil = x[x.size() - 1];
-		float yFil = simpleKalman(y[y.size()-1],yErr,aDX);
-		fx = xFil; fy = yFil;
+		if (x.size() > 1)
+		{
+			float yErr = findYErrApprox(y);
+			float xFil = x[x.size() - 1];
+			float yFil = simpleKalman(y[y.size() - 1], yErr, aDX);
+			fx = xFil; fy = yFil;
+		}
+		else
+		{
+			fx = 0;
+			fy = 0;
+		}
 	}
 
 
